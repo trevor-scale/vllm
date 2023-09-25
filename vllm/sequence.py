@@ -1,7 +1,9 @@
 """Sequence and its related classes."""
 import copy
 import enum
-from typing import Dict, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Union
+
+import torch
 
 from vllm.block import LogicalTokenBlock
 from vllm.sampling_params import SamplingParams
@@ -9,6 +11,7 @@ from vllm.sampling_params import SamplingParams
 
 class SequenceStatus(enum.Enum):
     """Status of a sequence."""
+
     WAITING = enum.auto()
     RUNNING = enum.auto()
     SWAPPED = enum.auto()
@@ -52,15 +55,16 @@ class SequenceData:
         prompt_token_ids: The token IDs of the prompt.
         output_token_ids: The token IDs of the output.
         cumulative_logprob: The cumulative log probability of the output.
+        logit_bias: Float tensor of biases for each logit to be generated.
     """
 
     def __init__(
-        self,
-        prompt_token_ids: List[int],
+        self, prompt_token_ids: List[int], logit_bias: Optional[torch.Tensor] = None
     ) -> None:
         self.prompt_token_ids = prompt_token_ids
         self.output_token_ids: List[int] = []
         self.cumulative_logprob = 0.0
+        self.logit_bias = logit_bias
 
     def append_token_id(self, token_id: int, logprob: float) -> None:
         self.output_token_ids.append(token_id)
@@ -84,10 +88,12 @@ class SequenceData:
         return self.output_token_ids[-1]
 
     def __repr__(self) -> str:
-        return (f"SequenceData("
-                f"prompt_token_ids={self.prompt_token_ids}, "
-                f"output_token_ids={self.output_token_ids}, "
-                f"cumulative_logprob={self.cumulative_logprob})")
+        return (
+            f"SequenceData("
+            f"prompt_token_ids={self.prompt_token_ids}, "
+            f"output_token_ids={self.output_token_ids}, "
+            f"cumulative_logprob={self.cumulative_logprob})"
+        )
 
 
 class Sequence:
@@ -141,19 +147,21 @@ class Sequence:
                 last_block = self.logical_token_blocks[-1]
 
             num_empty_slots = last_block.get_num_empty_slots()
-            last_block.append_tokens(token_ids[cursor:cursor +
-                                               num_empty_slots])
+            last_block.append_tokens(token_ids[cursor : cursor + num_empty_slots])
             cursor += num_empty_slots
 
     def append_token_id(
         self,
         token_id: int,
         logprobs: Dict[int, float],
+        decoding_function: Optional[Callable] = None,
     ) -> None:
         assert token_id in logprobs
         self._append_tokens_to_blocks([token_id])
         self.output_logprobs.append(logprobs)
         self.data.append_token_id(token_id, logprobs[token_id])
+        if decoding_function is not None:
+            self.data.logit_bias = decoding_function(self.data.output_token_ids)
 
     def get_len(self) -> int:
         return self.data.get_len()
@@ -176,10 +184,12 @@ class Sequence:
     def get_cumulative_logprob(self) -> float:
         return self.data.cumulative_logprob
 
-    def get_beam_search_score(self,
-                              length_penalty: float = 0.0,
-                              seq_len: Optional[int] = None,
-                              eos_token_id: Optional[int] = None) -> float:
+    def get_beam_search_score(
+        self,
+        length_penalty: float = 0.0,
+        seq_len: Optional[int] = None,
+        eos_token_id: Optional[int] = None,
+    ) -> float:
         """Calculate the beam search score with length penalty.
 
         Adapted from
@@ -190,8 +200,7 @@ class Sequence:
             seq_len = self.get_len()
             # Note: HF implementation does not count the EOS token
             # towards the length, we align with that here for testing.
-            if (eos_token_id is not None
-                    and self.get_last_token_id() == eos_token_id):
+            if eos_token_id is not None and self.get_last_token_id() == eos_token_id:
                 seq_len -= 1
         return self.get_cumulative_logprob() / (seq_len**length_penalty)
 
@@ -204,9 +213,11 @@ class Sequence:
         return new_seq
 
     def __repr__(self) -> str:
-        return (f"Sequence(seq_id={self.seq_id}, "
-                f"status={self.status.name}, "
-                f"num_blocks={len(self.logical_token_blocks)})")
+        return (
+            f"Sequence(seq_id={self.seq_id}, "
+            f"status={self.status.name}, "
+            f"num_blocks={len(self.logical_token_blocks)})"
+        )
 
 
 class SequenceGroup:
@@ -217,6 +228,7 @@ class SequenceGroup:
         seqs: The list of sequences.
         sampling_params: The sampling parameters used to generate the outputs.
         arrival_time: The arrival time of the request.
+        decoding_function: A function that produces logit biases for guided decoding.
     """
 
     def __init__(
@@ -225,11 +237,13 @@ class SequenceGroup:
         seqs: List[Sequence],
         sampling_params: SamplingParams,
         arrival_time: float,
+        decoding_function: Callable,
     ) -> None:
         self.request_id = request_id
         self.seqs_dict = {seq.seq_id: seq for seq in seqs}
         self.sampling_params = sampling_params
         self.arrival_time = arrival_time
+        self.decoding_function = decoding_function
 
     def get_max_num_running_seqs(self) -> int:
         """The maximum number of sequences running in parallel in the remaining
@@ -255,9 +269,7 @@ class SequenceGroup:
         if status is None:
             return list(self.seqs_dict.values())
         else:
-            return [
-                seq for seq in self.seqs_dict.values() if seq.status == status
-            ]
+            return [seq for seq in self.seqs_dict.values() if seq.status == status]
 
     def get_finished_seqs(self) -> List[Sequence]:
         return [seq for seq in self.seqs_dict.values() if seq.is_finished()]
@@ -284,9 +296,11 @@ class SequenceGroup:
         return all(seq.is_finished() for seq in self.get_seqs())
 
     def __repr__(self) -> str:
-        return (f"SequenceGroup(request_id={self.request_id}, "
-                f"sampling_params={self.sampling_params}, "
-                f"num_seqs={len(self.seqs_dict)})")
+        return (
+            f"SequenceGroup(request_id={self.request_id}, "
+            f"sampling_params={self.sampling_params}, "
+            f"num_seqs={len(self.seqs_dict)})"
+        )
 
 
 class SequenceGroupMetadata:
@@ -339,16 +353,20 @@ class SequenceOutputs:
         self.logprobs = logprobs
 
     def __repr__(self) -> str:
-        return (f"SequenceOutputs(parent_seq_id={self.parent_seq_id}, "
-                f"output_token={self.output_token}), "
-                f"logprobs={self.logprobs}")
+        return (
+            f"SequenceOutputs(parent_seq_id={self.parent_seq_id}, "
+            f"output_token={self.output_token}), "
+            f"logprobs={self.logprobs}"
+        )
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, SequenceOutputs):
             return NotImplementedError()
-        return (self.parent_seq_id == other.parent_seq_id
-                and self.output_token == other.output_token
-                and self.logprobs == other.logprobs)
+        return (
+            self.parent_seq_id == other.parent_seq_id
+            and self.output_token == other.output_token
+            and self.logprobs == other.logprobs
+        )
 
 
 # For each sequence group, we generate a list of SequenceOutputs object,
