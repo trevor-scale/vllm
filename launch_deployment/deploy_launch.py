@@ -51,7 +51,6 @@ def get_bundle_config(bundle_name: str, image_tag: str) -> Dict:
     num_shards = 2
     max_num_batched_tokens = 4096
     subcommands = [
-        "pip install pandas",
         f"./s5cmd cp {checkpoint_path} .",
         f"mkdir -p {final_weights_folder}",
         f"tar --no-same-owner -xf {base_path} -C {final_weights_folder}",

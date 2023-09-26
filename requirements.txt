@@ -10,3 +10,4 @@ uvicorn
 ray==2.6.3
 pydantic==1.10.12
 outlines==0.0.8
+pandas
