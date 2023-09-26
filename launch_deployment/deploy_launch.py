@@ -43,7 +43,7 @@ def get_bundle_config(bundle_name: str, image_tag: str) -> Dict:
             "vllm_server" "--model",
             "meta-llama/Llama-2-7b-chat-hf",
             "--tensor-parallel-size",
-            "4",
+            "2",
             "--port",
             "5005",
             "--max-num-batched-tokens",

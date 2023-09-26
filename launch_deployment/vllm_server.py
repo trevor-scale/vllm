@@ -16,14 +16,12 @@ TIMEOUT_TO_PREVENT_DEADLOCK = 1  # seconds
 app = FastAPI()
 
 
-@app.get("/healthz")
-@app.get("/health")
+@app.get("/readyz")
 def healthcheck():
     return "OK"
 
 
 @app.post("/predict")
-@app.post("/stream")
 async def generate(request: Request) -> Response:
     """Generate completion for the request.
 
