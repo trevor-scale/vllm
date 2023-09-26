@@ -18,7 +18,7 @@ app = FastAPI()
 
 @app.get("/readyz")
 def healthcheck():
-    return "OK"
+    return "ok"
 
 
 @app.post("/predict")

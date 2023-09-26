@@ -3,7 +3,7 @@
 import argparse
 import os
 from time import sleep
-from typing import Dict
+from typing import Dict, List, Optional
 
 import launch
 from launch_internal import get_launch_client
@@ -28,29 +28,49 @@ test_prompts = [
 ]
 
 
+class RequestModel(BaseModel):
+    prompt: str
+    temperature: float
+    max_tokens: int
+    stream: bool
+    decoding_regex_schema: Optional[str]
+
+
+class ResponseModel(BaseModel):
+    text: str
+    count_prompt_tokens: int
+    count_output_tokens: int
+    log_probs: Dict
+    tokens: List[str]
+
+
 def get_bundle_config(bundle_name: str, image_tag: str) -> Dict:
+    checkpoint_path = "s3://scale-ml/models/llama-2-hf/llama-2-7b-chat.tar"
+    final_weights_folder = "model_files"
+    base_path = checkpoint_path.split("/")[-1]
+    num_shards = 2
+    max_num_batched_tokens = 4096
+    subcommands = [
+        "pip install pandas",
+        f"./s5cmd cp {checkpoint_path} .",
+        f"mkdir -p {final_weights_folder}",
+        f"tar --no-same-owner -xf {base_path} -C {final_weights_folder}",
+        f"python -m vllm_server --model {final_weights_folder} --tensor-parallel-size {num_shards} --port 5005 --max-num-batched-tokens {max_num_batched_tokens}",
+    ]
+
     return {
         "model_bundle_name": bundle_name,
-        "request_schema": BaseModel,
-        "response_schema": BaseModel,
+        "request_schema": RequestModel,
+        "response_schema": ResponseModel,
         "repository": "fractal-chat-service",
         "tag": image_tag,
         "command": [
-            "dumb-init",
-            "--",
-            "python",
-            "-m",
-            "vllm_server" "--model",
-            "meta-llama/Llama-2-7b-chat-hf",
-            "--tensor-parallel-size",
-            "2",
-            "--port",
-            "5005",
-            "--max-num-batched-tokens",
-            "4096",
+            "/bin/bash",
+            "-c",
+            ";".join(subcommands),
         ],
-        "readiness_initial_delay_seconds": 20,
-        "env": {"AWS_PROFILE": "ml-worker", "DERIVE_CLASSIFICATIONS": "0"},
+        "readiness_initial_delay_seconds": 120,
+        "env": {},
     }
 
 
@@ -88,20 +108,20 @@ if __name__ == "__main__":
         for prompt, regex in zip(test_prompts, test_regexes):
             print(f"Request: {prompt}")
 
-            request_body = {
-                "prompt": prompt,
-                "temperature": 0.0,
-                "max_tokens": 100,
-                "stream": False,
-            }
-            future = endpoint.predict(
-                request=launch.EndpointRequest(
-                    args=request_body,
-                    return_pickled=False,
-                )
-            )
-            response = future.get()
-            print(response)
+            # request_body = {
+            #     "prompt": prompt,
+            #     "temperature": 0.0,
+            #     "max_tokens": 100,
+            #     "stream": False,
+            # }
+            # future = endpoint.predict(
+            #     request=launch.EndpointRequest(
+            #         args=request_body,
+            #         return_pickled=False,
+            #     )
+            # )
+            # response = future.get()
+            # print(response)
 
             request_body = {
                 "prompt": prompt,
