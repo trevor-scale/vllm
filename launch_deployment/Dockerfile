@@ -28,10 +28,10 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 9
     && update-alternatives --config python3 && ln -s /usr/bin/python3 /usr/bin/python
 
 RUN pip install --upgrade pip
-
-COPY . /workspace/vllm
-COPY launch_deployment/requirements.txt /workspace/requirements.txt
+COPY requirements.txt /workspace/requirements.txt
 RUN pip install -r /workspace/requirements.txt
 RUN wget https://github.com/peak/s5cmd/releases/download/v2.2.1/s5cmd_2.2.1_Linux-64bit.tar.gz
 RUN tar -xvzf s5cmd_2.2.1_Linux-64bit.tar.gz
+COPY . /workspace/vllm
+RUN pip install --no-deps --no-cache-dir -e /workspace/vllm
 COPY launch_deployment/vllm_server.py /workspace/vllm_server.py
