@@ -1,4 +1,5 @@
 import copy
+import re
 import time
 from functools import partial
 from typing import TYPE_CHECKING, Any, Iterable, List, Optional, Tuple, Union
@@ -266,6 +267,21 @@ class LLMEngine:
         if prompt_token_ids is None:
             assert prompt is not None
             prompt_token_ids = self.tokenizer.encode(prompt)
+
+        # Process token healing request. This solves boundary tokenization issues by
+        # removing the last token of the prompt and amending the decoding regex to ensure
+        # that the generated response starts with the removed text (allowing for it to be tokenized differently).
+        if sampling_params.token_healing and prompt is not None:
+            last_token = prompt_token_ids[-1]
+            stripped_string = self.tokenizer.decode(last_token)
+            prompt = prompt[: -len(stripped_string)]
+            prompt_token_ids = prompt_token_ids[:-1]
+            # Other parts of the code base assume that sampling_params is not changed within add_request.
+            sampling_params = copy.deepcopy(sampling_params)
+            # TODO: Check if this is ok for all regexes?
+            sampling_params.decoding_regex_schema = (
+                re.escape(stripped_string) + sampling_params.decoding_regex_schema
+            )
 
         # Create the sequences.
         block_size = self.cache_config.block_size

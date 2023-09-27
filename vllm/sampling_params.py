@@ -68,6 +68,7 @@ class SamplingParams:
         max_tokens: int = 16,
         logprobs: Optional[int] = None,
         decoding_regex_schema: Optional[str] = None,
+        token_healing: bool = False,
     ) -> None:
         self.n = n
         self.best_of = best_of if best_of is not None else n
@@ -80,6 +81,7 @@ class SamplingParams:
         self.length_penalty = length_penalty
         self.early_stopping = early_stopping
         self.decoding_regex_schema = decoding_regex_schema
+        self.token_healing = token_healing
         if stop is None:
             self.stop = []
         elif isinstance(stop, str):
@@ -125,6 +127,10 @@ class SamplingParams:
             raise ValueError(f"max_tokens must be at least 1, got {self.max_tokens}.")
         if self.logprobs is not None and self.logprobs < 0:
             raise ValueError(f"logprobs must be non-negative, got {self.logprobs}.")
+        if self.token_healing and self.decoding_regex_schema is None:
+            raise ValueError(
+                f"token healing can only be enabled when a decoding_regex_schema is passed."
+            )
 
     def _verify_beam_search(self) -> None:
         if self.best_of == 1:
