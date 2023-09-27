@@ -1,5 +1,6 @@
 """Contains code for working with launch endpoint (Checking endpoint, testing, deploying, etc)"""
-# python launch_deployment/deploy_launch.py --image_tag vllm-63aeeb78b835232d7f0c7bcbfe1f7d364b83bb06 --redeploy
+# Redeploy endpoint: python launch_deployment/deploy_launch.py llama-2-13b-chat --image_tag vllm-5742b5975030d7ab68d9b330e5c1c8305c8c955a --redeploy
+# Test endpoint: python launch_deployment/deploy_launch.py llama-2-13b-chat --endpoint_test
 import argparse
 import json
 import os
