@@ -80,6 +80,7 @@ def test_endpoint(endpoint: launch.AsyncEndpoint):
             "max_tokens": 100,
             "stream": False,
             "decoding_regex_schema": regex,
+            "token_healing": True,
         }
         future = endpoint.predict(
             request=launch.EndpointRequest(

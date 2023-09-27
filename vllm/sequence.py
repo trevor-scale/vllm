@@ -160,6 +160,8 @@ class Sequence:
         self._append_tokens_to_blocks([token_id])
         self.output_logprobs.append(logprobs)
         self.data.append_token_id(token_id, logprobs[token_id])
+        # We update the logit bias as soon as the new token is generated so it is correctly set
+        # the next time this sequence is up for generation.
         if decoding_function is not None:
             self.data.logit_bias = decoding_function(self.data.output_token_ids)
 

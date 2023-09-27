@@ -104,3 +104,9 @@ For details, check out our [blog post](https://vllm.ai).
 
 We welcome and value any contributions and collaborations.
 Please check out [CONTRIBUTING.md](./CONTRIBUTING.md) for how to get involved.
+
+## Guided Decoding
+
+Scale VLLM supports regex guided decoding through outlines integration. Simply pass a regular expression to the decoding_regex_schema parameter (either as a part of SamplingParameters or as a part of the request body) and the model's output will be forced to conform to this regular expression. The functionality works by restricting the model's sampling space to only tokens valid for the regex at each generation step meaning it is compatible with other sampling controls like temperature, beam search, and top_p/top_k.
+
+In addition, we support token healing to fix tokenization artifacts that normally arise at the boundary between the end of a prompt and the beginning of a set of generated tokens. This removes the last token from the prompt and forces the generation to start with a token that shares a prefix with the removed token. Note that this will change the values of prompt and response returned by the endpoint request (shifting one token from prompt -> response).

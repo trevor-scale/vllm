@@ -59,6 +59,7 @@ class Sampler(nn.Module):
         logits = _apply_penalties(
             logits, output_tokens, presence_penalties, frequency_penalties, self.vocab_size
         )
+        # Apply logit bias mask for guided generation.
         logits = _apply_logit_biases(logits, input_metadata)
         # Apply temperature scaling.
         temperatures = _get_temperatures(input_metadata)

@@ -49,6 +49,8 @@ class SamplingParams:
             tokens after the EOS token is generated.
         max_tokens: Maximum number of tokens to generate per output sequence.
         logprobs: Number of log probabilities to return per output token.
+        decoding_regex_schema: Regular expression (with python syntax) to be used to constrain generation.
+        token_healing: Whether to enable token healing for this generation. Only usable if regex decoding enabled.
     """
 
     def __init__(

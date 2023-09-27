@@ -288,10 +288,13 @@ class LLMEngine:
         seq_id = next(self.seq_counter)
         seq = Sequence(seq_id, prompt, prompt_token_ids, block_size)
 
-        # Create the sequence group.
+        # Create the sequence group. We include this decoding function as part of the SequenceGroup
+        # it will be called for every generation step with that sequence to generate a logit_bias mask
+        # that is used to modify logit values before sampling.
         decoding_function = get_outlines_decoding_function(
             self.outlines_model, sampling_params, self.model_config.hf_config.vocab_size
         )
+        # The logit bias is initialized with an empty generation.
         if decoding_function is not None:
             seq.data.logit_bias = decoding_function([])
 

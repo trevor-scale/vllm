@@ -4,7 +4,7 @@
 
 set -eo pipefail
 
-
+# TODO: create ECR repo for this/use the vllm repo once we're sure that's safe.
 IMAGE="692474966980.dkr.ecr.us-west-2.amazonaws.com/fractal-chat-service"
 
 # Build and push image for fastapi server
