@@ -99,14 +99,14 @@ def _apply_logit_biases(
             parent_seq_id = seq_ids[0]
             logit_bias = input_metadata.seq_data[parent_seq_id].logit_bias
             if logit_bias is not None:
-                logits[idx] += logit_bias
+                logits[idx] += logit_bias.to(logits.device)
             idx += 1
         else:
             # Apply biases the next tokens for generation tokens.
             for seq_id in seq_ids:
                 logit_bias = input_metadata.seq_data[seq_id].logit_bias
                 if logit_bias is not None:
-                    logits[idx] += logit_bias
+                    logits[idx] += logit_bias.to(logits.device)
                 idx += 1
 
     return logits

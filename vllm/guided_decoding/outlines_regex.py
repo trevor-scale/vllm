@@ -81,6 +81,6 @@ def get_outlines_decoding_function(
             biases[: len(raw_biases)] = raw_biases
         else:
             biases = raw_biases
-        return biases.to("cuda")
+        return biases
 
     return decoding_function
