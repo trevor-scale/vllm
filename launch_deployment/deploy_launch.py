@@ -34,6 +34,7 @@ class RequestModel(BaseModel):
     max_tokens: int
     stream: bool
     decoding_regex_schema: Optional[str]
+    token_healing: bool
 
 
 class ResponseModel(BaseModel):
