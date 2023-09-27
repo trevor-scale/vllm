@@ -54,7 +54,7 @@ def get_bundle_config(bundle_name: str, image_tag: str) -> Dict:
         f"./s5cmd cp {checkpoint_path} .",
         f"mkdir -p {final_weights_folder}",
         f"tar --no-same-owner -xf {base_path} -C {final_weights_folder}",
-        f'python -m vllm_server --model {final_weights_folder} --tensor-parallel-size {num_shards} --port 5005 --max-num-batched-tokens {max_num_batched_tokens} --host "::"',
+        f'python -m vllm_server_launch --model {final_weights_folder} --tensor-parallel-size {num_shards} --port 5005 --max-num-batched-tokens {max_num_batched_tokens} --host "::"',
     ]
 
     return {
