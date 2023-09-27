@@ -63,9 +63,9 @@ def get_outlines_decoding_function(
         return None
 
     outlines_program = regex(outlines_model, sampling_params.decoding_regex_schema)
-    mock_logits = torch.zeros(
-        (1, outlines_model.tokenizer.tokenizer.vocab_size), dtype=torch.double
-    )
+    # It's possible for len(outlines_model.tokenizer.vocabulary) != vocab_size
+    # when extra tokens have been added to the tokenizer but not tracked in the model.
+    mock_logits = torch.zeros((1, len(outlines_model.tokenizer.vocabulary)), dtype=torch.double)
 
     def decoding_function(generated_token_ids: List[int]) -> torch.Tensor:
         input_token_ids = torch.LongTensor([generated_token_ids])

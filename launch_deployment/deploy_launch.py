@@ -54,7 +54,7 @@ def get_bundle_config(bundle_name: str, image_tag: str) -> Dict:
         f"./s5cmd cp {checkpoint_path} .",
         f"mkdir -p {final_weights_folder}",
         f"tar --no-same-owner -xf {base_path} -C {final_weights_folder}",
-        f"python -m vllm_server --model {final_weights_folder} --tensor-parallel-size {num_shards} --port 5005 --max-num-batched-tokens {max_num_batched_tokens}",
+        f'python -m vllm_server --model {final_weights_folder} --tensor-parallel-size {num_shards} --port 5005 --max-num-batched-tokens {max_num_batched_tokens} --host "::"',
     ]
 
     return {
@@ -68,7 +68,7 @@ def get_bundle_config(bundle_name: str, image_tag: str) -> Dict:
             "-c",
             ";".join(subcommands),
         ],
-        "readiness_initial_delay_seconds": 120,
+        "readiness_initial_delay_seconds": 20,
         "env": {},
     }
 
@@ -78,6 +78,7 @@ def get_pytorch_service_params(endpoint_name, endpoint_type):
         "endpoint_name": endpoint_name,
         "cpus": 8,
         "memory": "40Gi",
+        "storage": "94Gi",
         "gpus": 2,
         "gpu_type": "nvidia-ampere-a10",
         "min_workers": 1,
@@ -107,20 +108,20 @@ if __name__ == "__main__":
         for prompt, regex in zip(test_prompts, test_regexes):
             print(f"Request: {prompt}")
 
-            # request_body = {
-            #     "prompt": prompt,
-            #     "temperature": 0.0,
-            #     "max_tokens": 100,
-            #     "stream": False,
-            # }
-            # future = endpoint.predict(
-            #     request=launch.EndpointRequest(
-            #         args=request_body,
-            #         return_pickled=False,
-            #     )
-            # )
-            # response = future.get()
-            # print(response)
+            request_body = {
+                "prompt": prompt,
+                "temperature": 0.0,
+                "max_tokens": 100,
+                "stream": False,
+            }
+            future = endpoint.predict(
+                request=launch.EndpointRequest(
+                    args=request_body,
+                    return_pickled=False,
+                )
+            )
+            response = future.get()
+            print(response)
 
             request_body = {
                 "prompt": prompt,
