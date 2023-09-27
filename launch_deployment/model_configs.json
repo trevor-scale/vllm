@@ -1,0 +1,40 @@
+{
+    "llama-2-7b-chat": {
+        "num_shards": 2,
+        "max_num_batched_tokens": 4096,
+        "checkpoint_path": "s3://scale-ml/models/llama-2-hf/llama-2-7b-chat.tar",
+        "service_params": {
+            "cpus": 8,
+            "memory": "40Gi",
+            "storage": "94Gi",
+            "gpus": 2,
+            "gpu_type": "nvidia-ampere-a10",
+            "min_workers": 1,
+            "max_workers": 2,
+            "per_worker": 10,
+            "labels": {
+                "team": "federal",
+                "product": "donovan"
+            }
+        }
+    },
+    "llama-2-13b-chat": {
+        "num_shards": 2,
+        "max_num_batched_tokens": 4096,
+        "checkpoint_path": "s3://scale-ml/models/llama-2-hf/llama-2-13b-chat.tar",
+        "service_params": {
+            "cpus": 8,
+            "memory": "40Gi",
+            "storage": "94Gi",
+            "gpus": 2,
+            "gpu_type": "nvidia-ampere-a10",
+            "min_workers": 1,
+            "max_workers": 2,
+            "per_worker": 10,
+            "labels": {
+                "team": "federal",
+                "product": "donovan"
+            }
+        }
+    }
+}
